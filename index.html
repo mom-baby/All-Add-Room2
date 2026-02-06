@@ -3,25 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบรวมยอดแจ้งแอด Premium - Eye Care Version</title>
+    <title>ระบบรวมยอดแจ้งแอด Premium - Smart Eye Care</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #818cf8; /* ปรับสีม่วงให้อ่อนลงเพื่อให้สบายตาในโหมดมืด */
+            --primary-color: #818cf8;
             --success-color: #10b981;
-            --copy-color: #3b82f6;
-            --bg-color: #0f172a; /* สีพื้นหลังเข้มแบบ Slate 900 */
-            --card-bg: #1e293b; /* สีการ์ด Slate 800 */
-            --text-main: #f1f5f9; /* สีตัวอักษรขาวนวล */
-            --text-label: #94a3b8; /* สีฉลากเทาอ่อน */
-            --input-bg: #334155; /* สีช่องกรอก Slate 700 */
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f1f5f9;
+            --text-label: #94a3b8;
+            --input-bg: #334155;
             --border-color: #475569;
         }
 
         body { 
             font-family: 'Kanit', sans-serif; 
             background-color: var(--bg-color);
-            background-image: radial-gradient(circle at top right, #1e1b4b, #0f172a); /* เพิ่มมิติด้วย Gradient มืด */
+            background-image: radial-gradient(circle at top right, #1e1b4b, #0f172a);
             min-height: 100vh;
             margin: 0;
             display: flex; 
@@ -39,10 +38,9 @@
             width: 100%; 
             max-width: 650px; 
             text-align: center;
-            border: 1px solid rgba(255,255,255,0.05); /* เพิ่มขอบบางๆ ให้ดูพรีเมียม */
+            border: 1px solid rgba(255,255,255,0.05);
         }
 
-        /* ตกแต่งโลโก้ GIF */
         .logo-wrapper {
             margin-bottom: 20px;
             animation: float 4s ease-in-out infinite;
@@ -52,7 +50,7 @@
             width: 160px;
             height: auto;
             border-radius: 20px;
-            filter: drop-shadow(0 0 15px rgba(129, 140, 248, 0.3)); /* แสงเรืองแสงอ่อนๆ */
+            filter: drop-shadow(0 0 15px rgba(129, 140, 248, 0.3));
         }
 
         @keyframes float {
@@ -67,9 +65,7 @@
             font-size: 1.6rem;
         }
 
-        h2 span {
-            color: var(--primary-color);
-        }
+        h2 span { color: var(--primary-color); }
 
         .input-group {
             margin-bottom: 20px;
@@ -96,10 +92,6 @@
             border-color: var(--primary-color);
             background-color: #3d4e63;
             box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.2);
-        }
-
-        textarea::placeholder {
-            color: #64748b;
         }
 
         .button-stack {
@@ -157,7 +149,7 @@
             white-space: pre-wrap; 
             font-family: 'Courier New', Courier, monospace; 
             border: 2px dashed var(--border-color); 
-            color: #38bdf8; /* สีตัวเลขสรุปเป็นสีฟ้าสว่างเพื่อให้อ่านง่ายบนพื้นเข้ม */
+            color: #38bdf8; 
             font-size: 14px;
             line-height: 1.6;
             text-align: left;
@@ -187,7 +179,7 @@
              alt="Logo" class="main-logo">
     </div>
 
-    <h2>📊 <span>EasyReport</span> ขี้เกียจรวมแอทก็ใช้ผมแค่นั้น</h2>
+    <h2>📊 <span>EasyReport</span> รวมให้ครบ จบที่เดียว</h2>
     
     <div class="input-group">
         <span class="label">📥 วางข้อมูลรายงานได้เลยครับ</span>
@@ -217,7 +209,9 @@
         let typeLabel = "แจ้งแอท-เสริม";
         const typeMatch = text.match(/(แจ้งแอด|แจ้งแอท)\s*[- ]*\s*([^\n\r–]+)/i);
         if (typeMatch && typeMatch[2]) {
-            typeLabel = `แจ้งแอท-${typeMatch[2].trim()}`;
+            // ตัดอีโมจิหรือช่องว่างส่วนเกินออก
+            let cleanLabel = typeMatch[2].trim().replace(/[💄\s]+$/, '');
+            typeLabel = `แจ้งแอท-${cleanLabel}`;
         }
 
         const keys = [
@@ -229,26 +223,53 @@
             { id: 'posting', regex: /กำลังโพสขาย\s*[:：]\s*(\d+)/g },
             { id: 'notPost', regex: /เข้ามาไม่โพส\s*[:：]\s*(\d+)/g },
             { id: 'off', regex: /เข้าออฟ\s*[:：]\s*(\d+)/g },
-            { id: 'bill', regex: /เปิดบิล\s*[:：]\s*(\d+)/g },
-            { id: 'kill', regex: /เชือด\s*[:：]\s*(\d+)/g }, 
-            { id: 'lastWork', regex: /งานสุดท้าย\s*[:：]\s*(\d+)/g },
-            { id: 'fixFirst', regex: /ซ่อมแรก\s*[:：]\s*(\d+)/g },
-            { id: 'fixLast', regex: /ซ่อมสุดท้าย\s*[:：]\s*(\d+)/g }
+            { id: 'bill', regex: /เปิดบิล\s*[:：]\s*([\d,\/\s]+)/g },
+            { id: 'kill', regex: /เชือด\s*[:：]\s*([\d,\/\s]+)/g }, 
+            { id: 'lastWork', regex: /งานสุดท้าย\s*[:：]\s*([\d,\/\s]+)/g },
+            { id: 'fixFirst', regex: /ซ่อมแรก\s*[:：]\s*([\d,\/\s]+)/g },
+            { id: 'fixLast', regex: /ซ่อมสุดท้าย\s*[:：]\s*([\d,\/\s]+)/g }
         ];
 
         let totals = {};
+        let moneyDetails = [];
+
         keys.forEach(k => {
             totals[k.id] = 0;
             let match;
             while ((match = k.regex.exec(text)) !== null) {
-                let val = parseInt(match[1]);
-                if (k.id === 'kill') {
-                    totals[k.id] += (val > 10 ? 1 : val);
+                let rawValue = match[1].replace(/,/g, '');
+                let parts = rawValue.split(/[\/\s]+/).filter(p => p !== "");
+                
+                let count = 0;
+                let moneyValue = 0;
+
+                if (parts.length === 1) {
+                    count = parseInt(parts[0]);
                 } else {
-                    totals[k.id] += val;
+                    let p1 = parseInt(parts[0]);
+                    let p2 = parseInt(parts[1]);
+                    // Logic: ตัวไหนน้อยกว่าคือจำนวนบิล ตัวไหนเยอะกว่าคือยอดเงิน
+                    if (p1 < p2 && p1 > 0) { count = p1; moneyValue = p2; }
+                    else { count = p2; moneyValue = p1; }
                 }
+
+                // ถ้ามียอดเงิน และเป็นหัวข้อกลุ่มการเงิน ให้เก็บไว้สรุปด้านล่าง
+                if (moneyValue > 100 && ['kill', 'lastWork', 'fixFirst', 'fixLast'].includes(k.id)) {
+                    moneyDetails.push(`${moneyValue}*${count > 10 ? 1 : count}`);
+                }
+
+                // กฏ: ถ้าตัวเลขที่จะนำมารวม > 10 ให้นับเป็น 1 (สำหรับกลุ่มเชือด/งานสุดท้าย)
+                let valueToSum = count;
+                if (['kill', 'lastWork', 'fixFirst', 'fixLast'].includes(k.id)) {
+                    valueToSum = (count > 10 ? 1 : count);
+                }
+
+                if (!isNaN(valueToSum)) totals[k.id] += valueToSum;
             }
         });
+
+        // เรียงยอดเงินจากน้อยไปมาก
+        moneyDetails.sort((a, b) => parseInt(a) - parseInt(b));
 
         const summary = `[❗️แผนก 2 ]
 ${typeLabel}
@@ -266,10 +287,11 @@ ${typeLabel}
 – เชือด : ${totals.kill}
 – งานสุดท้าย : ${totals.lastWork}
 – ซ่อมแรก : ${totals.fixFirst}
-– ซ่อมสุดท้าย : ${totals.fixLast}`;
+– ซ่อมสุดท้าย : ${totals.fixLast}
 
-        document.getElementById('result').innerText = summary;
-        // เอฟเฟกต์สีตัวอักษรผลลัพธ์เล็กน้อย
+${moneyDetails.join('\n')}`;
+
+        document.getElementById('result').innerText = summary.trim();
         document.getElementById('result').style.borderColor = "#818cf8";
     }
 
