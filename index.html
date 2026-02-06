@@ -206,92 +206,98 @@
         const text = document.getElementById('inputText').value;
         if (!text.trim()) return;
 
-        let typeLabel = "แจ้งแอท-เสริม";
-        const typeMatch = text.match(/(แจ้งแอด|แจ้งแอท)\s*[- ]*\s*([^\n\r–]+)/i);
-        if (typeMatch && typeMatch[2]) {
-            // ตัดอีโมจิหรือช่องว่างส่วนเกินออก
-            let cleanLabel = typeMatch[2].trim().replace(/[💄\s]+$/, '');
-            typeLabel = `แจ้งแอท-${cleanLabel}`;
-        }
+        const isMealReport = /รับ|ไม่รับ/.test(text);
 
-        const keys = [
-            { id: 'in', regex: /แอดเข้า\(进粉\)\s*[:：]\s*(\d+)/g },
-            { id: 'out', regex: /ออกกลุ่ม\s*[:：]\s*(\d+)/g },
-            { id: 'block', regex: /บล็อค\s*[:：]\s*(\d+)/g },
-            { id: 'dup', regex: /ซ้ำ\(重复\)\s*[:：]\s*(\d+)/g },
-            { id: 'remain', regex: /เหลือ\(剩下\)\s*[:：]\s*(\d+)/g },
-            { id: 'posting', regex: /กำลังโพสขาย\s*[:：]\s*(\d+)/g },
-            { id: 'notPost', regex: /เข้ามาไม่โพส\s*[:：]\s*(\d+)/g },
-            { id: 'off', regex: /เข้าออฟ\s*[:：]\s*(\d+)/g },
-            { id: 'bill', regex: /เปิดบิล\s*[:：]\s*([\d,\/\s]+)/g },
-            { id: 'kill', regex: /เชือด\s*[:：]\s*([\d,\/\s]+)/g }, 
-            { id: 'lastWork', regex: /งานสุดท้าย\s*[:：]\s*([\d,\/\s]+)/g },
-            { id: 'fixFirst', regex: /ซ่อมแรก\s*[:：]\s*([\d,\/\s]+)/g },
-            { id: 'fixLast', regex: /ซ่อมสุดท้าย\s*[:：]\s*([\d,\/\s]+)/g }
-        ];
+        if (isMealReport) {
+            // --- คำนวณวันที่ถัดไป ---
+            let nextDateStr = "00/00";
+            const dateMatch = text.match(/\[(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            
+            if (dateMatch) {
+                let day = parseInt(dateMatch[1]);
+                let month = parseInt(dateMatch[2]);
+                let year = parseInt(dateMatch[3]);
 
-        let totals = {};
-        let moneyDetails = [];
+                // สร้าง Object วันที่ (ใช้ ค.ศ. ในการคำนวณ)
+                let dateObj = new Date(year - 543, month - 1, day);
+                dateObj.setDate(dateObj.getDate() + 1); // บวกเพิ่ม 1 วัน
 
-        keys.forEach(k => {
-            totals[k.id] = 0;
-            let match;
-            while ((match = k.regex.exec(text)) !== null) {
-                let rawValue = match[1].replace(/,/g, '');
-                let parts = rawValue.split(/[\/\s]+/).filter(p => p !== "");
-                
-                let count = 0;
-                let moneyValue = 0;
-
-                if (parts.length === 1) {
-                    count = parseInt(parts[0]);
-                } else {
-                    let p1 = parseInt(parts[0]);
-                    let p2 = parseInt(parts[1]);
-                    // Logic: ตัวไหนน้อยกว่าคือจำนวนบิล ตัวไหนเยอะกว่าคือยอดเงิน
-                    if (p1 < p2 && p1 > 0) { count = p1; moneyValue = p2; }
-                    else { count = p2; moneyValue = p1; }
-                }
-
-                // ถ้ามียอดเงิน และเป็นหัวข้อกลุ่มการเงิน ให้เก็บไว้สรุปด้านล่าง
-                if (moneyValue > 100 && ['kill', 'lastWork', 'fixFirst', 'fixLast'].includes(k.id)) {
-                    moneyDetails.push(`${moneyValue}*${count > 10 ? 1 : count}`);
-                }
-
-                // กฏ: ถ้าตัวเลขที่จะนำมารวม > 10 ให้นับเป็น 1 (สำหรับกลุ่มเชือด/งานสุดท้าย)
-                let valueToSum = count;
-                if (['kill', 'lastWork', 'fixFirst', 'fixLast'].includes(k.id)) {
-                    valueToSum = (count > 10 ? 1 : count);
-                }
-
-                if (!isNaN(valueToSum)) totals[k.id] += valueToSum;
+                let nextDay = String(dateObj.getDate()).padStart(2, '0');
+                let nextMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
+                nextDateStr = `${nextDay}/${nextMonth}`;
             }
-        });
 
-        // เรียงยอดเงินจากน้อยไปมาก
-        moneyDetails.sort((a, b) => parseInt(a) - parseInt(b));
+            // --- คำนวณยอดข้าว ---
+            let meals = { m1: 0, m2: 0, m3: 0 };
+            const segments = text.split(/\[\d+\/\d+\/\d+\s+\d+:\d+\]/);
+            
+            segments.forEach(seg => {
+                const lines = seg.trim().split('\n').map(l => l.trim()).filter(l => l !== "");
+                const votes = lines.filter(l => l === "รับ" || l === "ไม่รับ");
+                if (votes.length >= 1 && votes[0] === "รับ") meals.m1++;
+                if (votes.length >= 2 && votes[1] === "รับ") meals.m2++;
+                if (votes.length >= 3 && votes[2] === "รับ") meals.m3++;
+            });
 
-        const summary = `[❗️แผนก 2 ]
-${typeLabel}
+            document.getElementById('result').innerText = `ข้าววันที่  ${nextDateStr}  ห้อง2\n\nเช้า : ${meals.m1}\nเที่ยง : ${meals.m2}\nเย็น : ${meals.m3}`;
+        } 
+        else {
+            // --- โหมดรายงานแผนก 2 (คงเดิม) ---
+            let typeLabel = "แจ้งแอท-เสริม";
+            const typeMatch = text.match(/(แจ้งแอด|แจ้งแอท)\s*[- ]*\s*([^\n\r–]+)/i);
+            if (typeMatch && typeMatch[2]) {
+                let cleanLabel = typeMatch[2].trim().replace(/[💄\s]+$/, '');
+                typeLabel = `แจ้งแอท-${cleanLabel}`;
+            }
 
-– แอดเข้า(进粉) : ${totals.in}
-– ออกกลุ่ม : ${totals.out}
-– บล็อค : ${totals.block}
-– ซ้ำ(重复) : ${totals.dup}
-– เหลือ(剩下) : ${totals.remain}
-– กำลังโพสขาย : ${totals.posting}
-– เข้ามาไม่โพส : ${totals.notPost}
-– เข้าออฟ : ${totals.off}
+            const keys = [
+                { id: 'in', regex: /แอดเข้า\(进粉\)\s*[:：]\s*(\d+)/g },
+                { id: 'out', regex: /ออกกลุ่ม\s*[:：]\s*(\d+)/g },
+                { id: 'block', regex: /บล็อค\s*[:：]\s*(\d+)/g },
+                { id: 'dup', regex: /ซ้ำ\(重复\)\s*[:：]\s*(\d+)/g },
+                { id: 'remain', regex: /เหลือ\(剩下\)\s*[:：]\s*(\d+)/g },
+                { id: 'posting', regex: /กำลังโพสขาย\s*[:：]\s*(\d+)/g },
+                { id: 'notPost', regex: /เข้ามาไม่โพส\s*[:：]\s*(\d+)/g },
+                { id: 'off', regex: /เข้าออฟ\s*[:：]\s*(\d+)/g },
+                { id: 'bill', regex: /เปิดบิล\s*[:：]\s*([\d,\/\s]+)/g },
+                { id: 'kill', regex: /เชือด\s*[:：]\s*([\d,\/\s]+)/g }, 
+                { id: 'lastWork', regex: /งานสุดท้าย\s*[:：]\s*([\d,\/\s]+)/g },
+                { id: 'fixFirst', regex: /ซ่อมแรก\s*[:：]\s*([\d,\/\s]+)/g },
+                { id: 'fixLast', regex: /ซ่อมสุดท้าย\s*[:：]\s*([\d,\/\s]+)/g }
+            ];
 
-– เปิดบิล : ${totals.bill}
-– เชือด : ${totals.kill}
-– งานสุดท้าย : ${totals.lastWork}
-– ซ่อมแรก : ${totals.fixFirst}
-– ซ่อมสุดท้าย : ${totals.fixLast}
+            let totals = {};
+            let moneyDetails = [];
 
-${moneyDetails.join('\n')}`;
+            keys.forEach(k => {
+                totals[k.id] = 0;
+                let match;
+                while ((match = k.regex.exec(text)) !== null) {
+                    let rawValue = match[1].replace(/,/g, '');
+                    let parts = rawValue.split(/[\/\s]+/).filter(p => p !== "");
+                    let count = 0, moneyValue = 0;
+                    if (parts.length === 1) { count = parseInt(parts[0]); } 
+                    else {
+                        let p1 = parseInt(parts[0]), p2 = parseInt(parts[1]);
+                        if (p1 < p2 && p1 > 0) { count = p1; moneyValue = p2; }
+                        else { count = p2; moneyValue = p1; }
+                    }
+                    if (moneyValue > 100 && ['kill', 'lastWork', 'fixFirst', 'fixLast'].includes(k.id)) {
+                        moneyDetails.push(`${moneyValue}*${count > 10 ? 1 : count}`);
+                    }
+                    if (k.id !== 'fixLast') {
+                        let valueToSum = (['kill', 'lastWork', 'fixFirst'].includes(k.id)) ? (count > 10 ? 1 : count) : count;
+                        if (!isNaN(valueToSum)) totals[k.id] += valueToSum;
+                    }
+                }
+            });
 
-        document.getElementById('result').innerText = summary.trim();
+            moneyDetails.sort((a, b) => parseInt(a) - parseInt(b));
+
+            const reportSummary = `[❗️แผนก 2 ]\n${typeLabel}\n\n– แอดเข้า(进粉) : ${totals.in}\n– ออกกลุ่ม : ${totals.out}\n– บล็อค : ${totals.block}\n– ซ้ำ(重复) : ${totals.dup}\n– เหลือ(剩下) : ${totals.remain}\n– กำลังโพสขาย : ${totals.posting}\n– เข้ามาไม่โพส : ${totals.notPost}\n– เข้าออฟ : ${totals.off}\n\n– เปิดบิล : ${totals.bill}\n– เชือด : ${totals.kill}\n– งานสุดท้าย : ${totals.lastWork}\n– ซ่อมแรก : ${totals.fixFirst}\n– ซ่อมสุดท้าย : \n\n${moneyDetails.join('\n')}`;
+
+            document.getElementById('result').innerText = reportSummary.trim();
+        }
         document.getElementById('result').style.borderColor = "#818cf8";
     }
 
@@ -304,7 +310,6 @@ ${moneyDetails.join('\n')}`;
     function copyResult() {
         const resultText = document.getElementById('result').innerText;
         if(resultText.includes("พร้อมสรุปยอด")) return;
-        
         navigator.clipboard.writeText(resultText).then(() => {
             const toast = document.getElementById('toast');
             toast.style.display = 'block';
@@ -312,6 +317,5 @@ ${moneyDetails.join('\n')}`;
         });
     }
 </script>
-
 </body>
 </html>
