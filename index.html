@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบรวมยอดแจ้งแอด Premium - Eye Care Version</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #818cf8; /* ปรับสีม่วงให้อ่อนลงเพื่อให้สบายตาในโหมดมืด */
+            --success-color: #10b981;
+            --copy-color: #3b82f6;
+            --bg-color: #0f172a; /* สีพื้นหลังเข้มแบบ Slate 900 */
+            --card-bg: #1e293b; /* สีการ์ด Slate 800 */
+            --text-main: #f1f5f9; /* สีตัวอักษรขาวนวล */
+            --text-label: #94a3b8; /* สีฉลากเทาอ่อน */
+            --input-bg: #334155; /* สีช่องกรอก Slate 700 */
+            --border-color: #475569;
+        }
+
+        body { 
+            font-family: 'Kanit', sans-serif; 
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at top right, #1e1b4b, #0f172a); /* เพิ่มมิติด้วย Gradient มืด */
+            min-height: 100vh;
+            margin: 0;
+            display: flex; 
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: var(--text-main);
+        }
+
+        .container { 
+            background: var(--card-bg); 
+            padding: 30px; 
+            border-radius: 24px; 
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            width: 100%; 
+            max-width: 650px; 
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.05); /* เพิ่มขอบบางๆ ให้ดูพรีเมียม */
+        }
+
+        /* ตกแต่งโลโก้ GIF */
+        .logo-wrapper {
+            margin-bottom: 20px;
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .main-logo {
+            width: 160px;
+            height: auto;
+            border-radius: 20px;
+            filter: drop-shadow(0 0 15px rgba(129, 140, 248, 0.3)); /* แสงเรืองแสงอ่อนๆ */
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-12px); }
+        }
+
+        h2 { 
+            color: var(--text-main); 
+            margin-bottom: 25px;
+            font-weight: 600;
+            font-size: 1.6rem;
+        }
+
+        h2 span {
+            color: var(--primary-color);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        textarea { 
+            width: 100%; 
+            height: 180px; 
+            background-color: var(--input-bg);
+            border: 2px solid var(--border-color); 
+            border-radius: 16px; 
+            padding: 15px; 
+            box-sizing: border-box; 
+            font-size: 15px; 
+            color: var(--text-main);
+            transition: all 0.3s ease;
+            outline: none;
+            font-family: 'Kanit', sans-serif;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            border-color: var(--primary-color);
+            background-color: #3d4e63;
+            box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.2);
+        }
+
+        textarea::placeholder {
+            color: #64748b;
+        }
+
+        .button-stack {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        button { 
+            padding: 15px; 
+            border: none; 
+            border-radius: 14px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            font-weight: 600; 
+            transition: all 0.2s; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: 'Kanit', sans-serif;
+        }
+
+        button:active { transform: scale(0.97); }
+
+        .btn-calc { background-color: var(--primary-color); color: white; }
+        .btn-calc:hover { background-color: #6366f1; transform: translateY(-2px); }
+
+        .btn-clear { background-color: #334155; color: #cbd5e1; }
+        .btn-clear:hover { background-color: #475569; }
+
+        .btn-copy { 
+            background-color: var(--success-color); 
+            color: white; 
+            width: 100%;
+            margin-top: 15px;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+        }
+        .btn-copy:hover { background-color: #059669; transform: translateY(-2px); }
+
+        .label { 
+            font-weight: 400; 
+            margin-bottom: 8px; 
+            display: block; 
+            color: var(--text-label);
+            font-size: 0.9rem;
+            margin-left: 5px;
+        }
+
+        #result { 
+            background: rgba(15, 23, 42, 0.5); 
+            padding: 20px; 
+            border-radius: 16px; 
+            white-space: pre-wrap; 
+            font-family: 'Courier New', Courier, monospace; 
+            border: 2px dashed var(--border-color); 
+            color: #38bdf8; /* สีตัวเลขสรุปเป็นสีฟ้าสว่างเพื่อให้อ่านง่ายบนพื้นเข้ม */
+            font-size: 14px;
+            line-height: 1.6;
+            text-align: left;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #f8fafc;
+            color: #0f172a;
+            padding: 12px 24px;
+            border-radius: 12px;
+            display: none;
+            font-weight: 600;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="logo-wrapper">
+        <img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnV2eG1qeXAxaW9pMnZnbmV5aTUwdG5hYXJ4Y3FjNDlkYmFkNjEyeiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/NH2bUUPF4SMeGOPyLL/giphy.gif" 
+             alt="Logo" class="main-logo">
+    </div>
+
+    <h2>📊 <span>EasyReport</span> ขี้เกียจรวมแอทก็ใช้ผมแค่นั้น</h2>
+    
+    <div class="input-group">
+        <span class="label">📥 วางข้อมูลรายงานได้เลยครับ</span>
+        <textarea id="inputText" placeholder="ก๊อปปี้รายงานมาวางที่นี่..."></textarea>
+    </div>
+    
+    <div class="button-stack">
+        <button class="btn-calc" onclick="calculateTotal()">🚀 คำนวณยอดรวม</button>
+        <button class="btn-clear" onclick="clearAll()">ล้างข้อมูล</button>
+    </div>
+    
+    <div class="input-group">
+        <span class="label">📋 ผลลัพธ์สรุปยอด</span>
+        <div id="result">พร้อมสรุปยอดให้ที่นี่ครับ...</div>
+    </div>
+    
+    <button class="btn-copy" id="copyBtn" onclick="copyResult()">✨ คัดลอกไปใช้งาน</button>
+</div>
+
+<div id="toast" class="toast">คัดลอกลงคลิปบอร์ดแล้วครับ! ✅</div>
+
+<script>
+    function calculateTotal() {
+        const text = document.getElementById('inputText').value;
+        if (!text.trim()) return;
+
+        let typeLabel = "แจ้งแอท-เสริม";
+        const typeMatch = text.match(/(แจ้งแอด|แจ้งแอท)\s*[- ]*\s*([^\n\r–]+)/i);
+        if (typeMatch && typeMatch[2]) {
+            typeLabel = `แจ้งแอท-${typeMatch[2].trim()}`;
+        }
+
+        const keys = [
+            { id: 'in', regex: /แอดเข้า\(进粉\)\s*[:：]\s*(\d+)/g },
+            { id: 'out', regex: /ออกกลุ่ม\s*[:：]\s*(\d+)/g },
+            { id: 'block', regex: /บล็อค\s*[:：]\s*(\d+)/g },
+            { id: 'dup', regex: /ซ้ำ\(重复\)\s*[:：]\s*(\d+)/g },
+            { id: 'remain', regex: /เหลือ\(剩下\)\s*[:：]\s*(\d+)/g },
+            { id: 'posting', regex: /กำลังโพสขาย\s*[:：]\s*(\d+)/g },
+            { id: 'notPost', regex: /เข้ามาไม่โพส\s*[:：]\s*(\d+)/g },
+            { id: 'off', regex: /เข้าออฟ\s*[:：]\s*(\d+)/g },
+            { id: 'bill', regex: /เปิดบิล\s*[:：]\s*(\d+)/g },
+            { id: 'kill', regex: /เชือด\s*[:：]\s*(\d+)/g }, 
+            { id: 'lastWork', regex: /งานสุดท้าย\s*[:：]\s*(\d+)/g },
+            { id: 'fixFirst', regex: /ซ่อมแรก\s*[:：]\s*(\d+)/g },
+            { id: 'fixLast', regex: /ซ่อมสุดท้าย\s*[:：]\s*(\d+)/g }
+        ];
+
+        let totals = {};
+        keys.forEach(k => {
+            totals[k.id] = 0;
+            let match;
+            while ((match = k.regex.exec(text)) !== null) {
+                let val = parseInt(match[1]);
+                if (k.id === 'kill') {
+                    totals[k.id] += (val > 10 ? 1 : val);
+                } else {
+                    totals[k.id] += val;
+                }
+            }
+        });
+
+        const summary = `[❗️แผนก 2 ]
+${typeLabel}
+
+– แอดเข้า(进粉) : ${totals.in}
+– ออกกลุ่ม : ${totals.out}
+– บล็อค : ${totals.block}
+– ซ้ำ(重复) : ${totals.dup}
+– เหลือ(剩下) : ${totals.remain}
+– กำลังโพสขาย : ${totals.posting}
+– เข้ามาไม่โพส : ${totals.notPost}
+– เข้าออฟ : ${totals.off}
+
+– เปิดบิล : ${totals.bill}
+– เชือด : ${totals.kill}
+– งานสุดท้าย : ${totals.lastWork}
+– ซ่อมแรก : ${totals.fixFirst}
+– ซ่อมสุดท้าย : ${totals.fixLast}`;
+
+        document.getElementById('result').innerText = summary;
+        // เอฟเฟกต์สีตัวอักษรผลลัพธ์เล็กน้อย
+        document.getElementById('result').style.borderColor = "#818cf8";
+    }
+
+    function clearAll() {
+        document.getElementById('inputText').value = "";
+        document.getElementById('result').innerText = "พร้อมสรุปยอดให้ที่นี่ครับ...";
+        document.getElementById('result').style.borderColor = "#475569";
+    }
+
+    function copyResult() {
+        const resultText = document.getElementById('result').innerText;
+        if(resultText.includes("พร้อมสรุปยอด")) return;
+        
+        navigator.clipboard.writeText(resultText).then(() => {
+            const toast = document.getElementById('toast');
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        });
+    }
+</script>
+
+</body>
+</html>
