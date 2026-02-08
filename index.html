@@ -206,10 +206,11 @@
         const text = document.getElementById('inputText').value;
         if (!text.trim()) return;
 
-        const isMealReport = /รับ|ไม่รับ/.test(text);
+        // ตรวจสอบว่าเป็นรายงานนับข้าวหรือไม่ (เพิ่มคำว่า "รีบ")
+        const isMealReport = /รับ|ไม่รับ|รีบ/.test(text);
 
         if (isMealReport) {
-            // --- คำนวณวันที่ถัดไป ---
+            // --- โหมดนับข้าว (บวก 1 วัน + รองรับคำผิด) ---
             let nextDateStr = "00/00";
             const dateMatch = text.match(/\[(\d{1,2})\/(\d{1,2})\/(\d{4})/);
             
@@ -217,86 +218,99 @@
                 let day = parseInt(dateMatch[1]);
                 let month = parseInt(dateMatch[2]);
                 let year = parseInt(dateMatch[3]);
-
-                // สร้าง Object วันที่ (ใช้ ค.ศ. ในการคำนวณ)
                 let dateObj = new Date(year - 543, month - 1, day);
-                dateObj.setDate(dateObj.getDate() + 1); // บวกเพิ่ม 1 วัน
-
+                // บวก 2 วันตามเงื่อนไขใหม่
+                dateObj.setDate(dateObj.getDate() + 1);
                 let nextDay = String(dateObj.getDate()).padStart(2, '0');
                 let nextMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
                 nextDateStr = `${nextDay}/${nextMonth}`;
             }
 
-            // --- คำนวณยอดข้าว ---
             let meals = { m1: 0, m2: 0, m3: 0 };
+            // แยกบล็อกคนด้วย Timestamp
             const segments = text.split(/\[\d+\/\d+\/\d+\s+\d+:\d+\]/);
             
             segments.forEach(seg => {
                 const lines = seg.trim().split('\n').map(l => l.trim()).filter(l => l !== "");
-                const votes = lines.filter(l => l === "รับ" || l === "ไม่รับ");
-                if (votes.length >= 1 && votes[0] === "รับ") meals.m1++;
-                if (votes.length >= 2 && votes[1] === "รับ") meals.m2++;
-                if (votes.length >= 3 && votes[2] === "รับ") meals.m3++;
+                // กรองเอาเฉพาะบรรทัดที่สั่งข้าว (รองรับ "รีบ" และ "รับ" แบบมีช่องว่าง)
+                const votes = lines.map(line => {
+                    let clean = line.replace(/\s+/g, '').trim();
+                    if (clean.includes("ไม่")) return "N";
+                    if (clean.includes("รับ") || clean.includes("รีบ")) return "Y";
+                    return null;
+                }).filter(v => v !== null);
+
+                if (votes.length >= 1 && votes[0] === "Y") meals.m1++;
+                if (votes.length >= 2 && votes[1] === "Y") meals.m2++;
+                if (votes.length >= 3 && votes[2] === "Y") meals.m3++;
             });
 
             document.getElementById('result').innerText = `ข้าววันที่  ${nextDateStr}  ห้อง2\n\nเช้า : ${meals.m1}\nเที่ยง : ${meals.m2}\nเย็น : ${meals.m3}`;
         } 
         else {
-            // --- โหมดรายงานแผนก 2 (คงเดิม) ---
-            let typeLabel = "แจ้งแอท-เสริม";
-            const typeMatch = text.match(/(แจ้งแอด|แจ้งแอท)\s*[- ]*\s*([^\n\r–]+)/i);
-            if (typeMatch && typeMatch[2]) {
-                let cleanLabel = typeMatch[2].trim().replace(/[💄\s]+$/, '');
-                typeLabel = `แจ้งแอท-${cleanLabel}`;
-            }
-
+            // --- โหมดแผนก 2 (ตรรกะเดิมครบชุด) ---
             const keys = [
-                { id: 'in', regex: /แอดเข้า\(进粉\)\s*[:：]\s*(\d+)/g },
-                { id: 'out', regex: /ออกกลุ่ม\s*[:：]\s*(\d+)/g },
-                { id: 'block', regex: /บล็อค\s*[:：]\s*(\d+)/g },
-                { id: 'dup', regex: /ซ้ำ\(重复\)\s*[:：]\s*(\d+)/g },
-                { id: 'remain', regex: /เหลือ\(剩下\)\s*[:：]\s*(\d+)/g },
-                { id: 'posting', regex: /กำลังโพสขาย\s*[:：]\s*(\d+)/g },
-                { id: 'notPost', regex: /เข้ามาไม่โพส\s*[:：]\s*(\d+)/g },
-                { id: 'off', regex: /เข้าออฟ\s*[:：]\s*(\d+)/g },
-                { id: 'bill', regex: /เปิดบิล\s*[:：]\s*([\d,\/\s]+)/g },
-                { id: 'kill', regex: /เชือด\s*[:：]\s*([\d,\/\s]+)/g }, 
-                { id: 'lastWork', regex: /งานสุดท้าย\s*[:：]\s*([\d,\/\s]+)/g },
-                { id: 'fixFirst', regex: /ซ่อมแรก\s*[:：]\s*([\d,\/\s]+)/g },
-                { id: 'fixLast', regex: /ซ่อมสุดท้าย\s*[:：]\s*([\d,\/\s]+)/g }
+                { id: 'in', regex: /(?:แอดเข้า|In).*?[:：]\s*([^\n\r]+)/gi },
+                { id: 'out', regex: /(?:ออกกลุ่ม|Out).*?[:：]\s*([^\n\r]+)/gi },
+                { id: 'block', regex: /(?:บล็อค|Block).*?[:：]\s*([^\n\r]+)/gi },
+                { id: 'dup', regex: /(?:ซ้ำ|Dup).*?[:：]\s*([^\n\r]+)/gi },
+                { id: 'remain', regex: /(?:เหลือ|Remain).*?[:：]\s*([^\n\r]+)/gi },
+                { id: 'posting', regex: /กำลังโพส.*?[:：]\s*([^\n\r]+)/gi },
+                { id: 'notPost', regex: /(?:เข้ามาไม่โพส|NotPost).*?[:：]\s*([^\n\r]+)/gi },
+                { id: 'off', regex: /(?:เข้าออฟ|Off).*?[:：]\s*([^\n\r]+)/gi },
+                { id: 'bill', regex: /เปิดบิล.*?[:：]\s*([^\n\r]+)/gi, isMoney: true },
+                { id: 'kill', regex: /เชือด.*?[:：]\s*([^\n\r]+)/gi, isMoney: true },
+                { id: 'lastWork', regex: /งานสุดท้าย.*?[:：]\s*([^\n\r]+)/gi, isMoney: true },
+                { id: 'fixFirst', regex: /ซ่อมแรก.*?[:：]\s*([^\n\r]+)/gi, isMoney: true },
+                { id: 'fixLast', regex: /ซ่อมสุดท้าย.*?[:：]\s*([^\n\r]+)/gi, isMoney: true }
             ];
 
             let totals = {};
-            let moneyDetails = [];
+            let killMoneyList = []; 
+            keys.forEach(k => totals[k.id] = 0);
 
             keys.forEach(k => {
-                totals[k.id] = 0;
                 let match;
                 while ((match = k.regex.exec(text)) !== null) {
-                    let rawValue = match[1].replace(/,/g, '');
-                    let parts = rawValue.split(/[\/\s]+/).filter(p => p !== "");
-                    let count = 0, moneyValue = 0;
-                    if (parts.length === 1) { count = parseInt(parts[0]); } 
-                    else {
-                        let p1 = parseInt(parts[0]), p2 = parseInt(parts[1]);
-                        if (p1 < p2 && p1 > 0) { count = p1; moneyValue = p2; }
-                        else { count = p2; moneyValue = p1; }
-                    }
-                    if (moneyValue > 100 && ['kill', 'lastWork', 'fixFirst', 'fixLast'].includes(k.id)) {
-                        moneyDetails.push(`${moneyValue}*${count > 10 ? 1 : count}`);
-                    }
-                    if (k.id !== 'fixLast') {
-                        let valueToSum = (['kill', 'lastWork', 'fixFirst'].includes(k.id)) ? (count > 10 ? 1 : count) : count;
-                        if (!isNaN(valueToSum)) totals[k.id] += valueToSum;
+                    let rawLine = match[1].trim().replace(/,/g, '');
+                    if (k.isMoney) {
+                        let chunks = rawLine.split(/\s+/);
+                        let lineMoneyCount = 0;
+                        let foundMoneyInLine = false;
+
+                        chunks.forEach(chunk => {
+                            let parts = chunk.split('/').map(p => parseInt(p)).filter(n => !isNaN(n));
+                            let money = 0, count = 0;
+                            if (parts.length === 2) {
+                                if (parts[0] > 100) { money = parts[0]; count = parts[1]; }
+                                else if (parts[1] > 100) { count = parts[0]; money = parts[1]; }
+                            } else if (parts.length === 1 && parts[0] > 100) {
+                                money = parts[0]; count = 1;
+                            }
+                            if (money > 0) {
+                                foundMoneyInLine = true;
+                                lineMoneyCount += count;
+                                if (k.id === 'kill') for(let i=0; i<count; i++) killMoneyList.push(money);
+                            }
+                        });
+                        if (!foundMoneyInLine) {
+                            let simpleNum = parseInt(rawLine);
+                            if (!isNaN(simpleNum)) totals[k.id] += simpleNum;
+                        } else {
+                            totals[k.id] += lineMoneyCount;
+                        }
+                    } else {
+                        let numbers = rawLine.match(/\d+/g);
+                        if (numbers) totals[k.id] += numbers.map(Number).reduce((a, b) => a + b, 0);
                     }
                 }
             });
 
-            moneyDetails.sort((a, b) => parseInt(a) - parseInt(b));
+            let moneyFrequency = {};
+            killMoneyList.forEach(m => moneyFrequency[m] = (moneyFrequency[m] || 0) + 1);
+            let moneyOutput = Object.keys(moneyFrequency).sort((a,b)=>a-b).map(m => `${m}*${moneyFrequency[m]}`).join('\n');
 
-            const reportSummary = `[❗️แผนก 2 ]\n${typeLabel}\n\n– แอดเข้า(进粉) : ${totals.in}\n– ออกกลุ่ม : ${totals.out}\n– บล็อค : ${totals.block}\n– ซ้ำ(重复) : ${totals.dup}\n– เหลือ(剩下) : ${totals.remain}\n– กำลังโพสขาย : ${totals.posting}\n– เข้ามาไม่โพส : ${totals.notPost}\n– เข้าออฟ : ${totals.off}\n\n– เปิดบิล : ${totals.bill}\n– เชือด : ${totals.kill}\n– งานสุดท้าย : ${totals.lastWork}\n– ซ่อมแรก : ${totals.fixFirst}\n– ซ่อมสุดท้าย : \n\n${moneyDetails.join('\n')}`;
-
-            document.getElementById('result').innerText = reportSummary.trim();
+            document.getElementById('result').innerText = `[❗️แผนก 2 ]\nแจ้งแอท-เสริม\n\n– แอดเข้า(进粉) : ${totals.in}\n– ออกกลุ่ม : ${totals.out}\n– บล็อค : ${totals.block}\n– ซ้ำ(重复) : ${totals.dup}\n– เหลือ(剩下) : ${totals.remain}\n– กำลังโพสขาย : ${totals.posting}\n– เข้ามาไม่โพส : ${totals.notPost}\n– เข้าออฟ : ${totals.off}\n\n– เปิดบิล : ${totals.bill}\n– เชือด : ${totals.kill}\n– งานสุดท้าย : ${totals.lastWork}\n– ซ่อมแรก : ${totals.fixFirst}\n– ซ่อมสุดท้าย : ${totals.fixLast}\n\n${moneyOutput}`.trim();
         }
         document.getElementById('result').style.borderColor = "#818cf8";
     }
@@ -308,12 +322,12 @@
     }
 
     function copyResult() {
-        const resultText = document.getElementById('result').innerText;
-        if(resultText.includes("พร้อมสรุปยอด")) return;
-        navigator.clipboard.writeText(resultText).then(() => {
-            const toast = document.getElementById('toast');
-            toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        const text = document.getElementById('result').innerText;
+        if(text.includes("พร้อมสรุปยอด")) return;
+        navigator.clipboard.writeText(text).then(() => {
+            const t = document.getElementById('toast');
+            t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 2000);
         });
     }
 </script>
