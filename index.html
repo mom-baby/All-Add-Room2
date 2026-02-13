@@ -206,10 +206,50 @@
         const text = document.getElementById('inputText').value;
         if (!text.trim()) return;
 
-        // ตรวจสอบว่าเป็นรายงานนับข้าวหรือไม่ (เพิ่มคำว่า "รีบ")
-        const isMealReport = /รับ|ไม่รับ|รีบ/.test(text);
+        // ตรวจสอบโหมด
+        const isFinancialReport = /总入款金额|出款/.test(text);
+        const isMealReport = /รับ|ไม่รับ|รีบ/.test(text) && !isFinancialReport; // กันชนเผื่อมีคำปนกัน
 
-        if (isMealReport) {
+        if (isFinancialReport) {
+            // --- โหมดยอดเงิน (จีน) ---
+            let totalPeople = 0;
+            let totalDeposit = 0;
+            let totalWithdrawal = 0;
+
+            // หาจำนวนคนจากคำว่า "组" (กลุ่ม) ตามด้วยตัวเลข
+            const peopleRegex = /组\s*(\d+)/g;
+            let match;
+            while ((match = peopleRegex.exec(text)) !== null) {
+                totalPeople += parseInt(match[1]);
+            }
+
+            // หายอดเงินเข้า (总入款金额)
+            const depositRegex = /总入款金额.*?[：:]\s*([\d,]+)/g;
+            while ((match = depositRegex.exec(text)) !== null) {
+                let amount = parseInt(match[1].replace(/,/g, ''));
+                if (!isNaN(amount)) totalDeposit += amount;
+            }
+
+            // หายอดเงินออก (出款)
+            const withdrawalRegex = /出款\s*[：:]\s*([\d,]+)/g;
+            while ((match = withdrawalRegex.exec(text)) !== null) {
+                let amount = parseInt(match[1].replace(/,/g, ''));
+                if (!isNaN(amount)) totalWithdrawal += amount;
+            }
+
+            // จัดรูปแบบให้มี คอมม่า (,)
+            const formatNumber = (num) => num.toLocaleString('en-US');
+
+            // แสดงผลตาม Format ที่ต้องการ
+            document.getElementById('result').innerText = 
+`凤凰集团 拜林最牛逼 
+
+总入款金额  ${totalPeople} 人  : ${formatNumber(totalDeposit)}
+
+出款   :  ${formatNumber(totalWithdrawal)}`;
+            
+        } 
+        else if (isMealReport) {
             // --- โหมดนับข้าว (บวก 1 วัน + รองรับคำผิด) ---
             let nextDateStr = "00/00";
             const dateMatch = text.match(/\[(\d{1,2})\/(\d{1,2})\/(\d{4})/);
@@ -219,7 +259,6 @@
                 let month = parseInt(dateMatch[2]);
                 let year = parseInt(dateMatch[3]);
                 let dateObj = new Date(year - 543, month - 1, day);
-                // บวก 2 วันตามเงื่อนไขใหม่
                 dateObj.setDate(dateObj.getDate() + 1);
                 let nextDay = String(dateObj.getDate()).padStart(2, '0');
                 let nextMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -227,12 +266,10 @@
             }
 
             let meals = { m1: 0, m2: 0, m3: 0 };
-            // แยกบล็อกคนด้วย Timestamp
             const segments = text.split(/\[\d+\/\d+\/\d+\s+\d+:\d+\]/);
             
             segments.forEach(seg => {
                 const lines = seg.trim().split('\n').map(l => l.trim()).filter(l => l !== "");
-                // กรองเอาเฉพาะบรรทัดที่สั่งข้าว (รองรับ "รีบ" และ "รับ" แบบมีช่องว่าง)
                 const votes = lines.map(line => {
                     let clean = line.replace(/\s+/g, '').trim();
                     if (clean.includes("ไม่")) return "N";
@@ -310,8 +347,12 @@
             killMoneyList.forEach(m => moneyFrequency[m] = (moneyFrequency[m] || 0) + 1);
             let moneyOutput = Object.keys(moneyFrequency).sort((a,b)=>a-b).map(m => `${m}*${moneyFrequency[m]}`).join('\n');
 
-            document.getElementById('result').innerText = `[❗️แผนก 2 ]\nแจ้งแอท-เสริม\n\n– แอดเข้า(进粉) : ${totals.in}\n– ออกกลุ่ม : ${totals.out}\n– บล็อค : ${totals.block}\n– ซ้ำ(重复) : ${totals.dup}\n– เหลือ(剩下) : ${totals.remain}\n– กำลังโพสขาย : ${totals.posting}\n– เข้ามาไม่โพส : ${totals.notPost}\n– เข้าออฟ : ${totals.off}\n\n– เปิดบิล : ${totals.bill}\n– เชือด : ${totals.kill}\n– งานสุดท้าย : ${totals.lastWork}\n– ซ่อมแรก : ${totals.fixFirst}\n– ซ่อมสุดท้าย : ${totals.fixLast}\n\n${moneyOutput}`.trim();
+            let finalOutput = `[❗️แผนก 2 ]\nแจ้งแอท-เสริม\n\n– แอดเข้า(进粉) : ${totals.in}\n– ออกกลุ่ม : ${totals.out}\n– บล็อค : ${totals.block}\n– ซ้ำ(重复) : ${totals.dup}\n– เหลือ(剩下) : ${totals.remain}\n– กำลังโพสขาย : ${totals.posting}\n– เข้ามาไม่โพส : ${totals.notPost}\n– เข้าออฟ : ${totals.off}\n\n– เปิดบิล : ${totals.bill}\n– เชือด : ${totals.kill}\n– งานสุดท้าย : ${totals.lastWork}\n– ซ่อมแรก : ${totals.fixFirst}\n– ซ่อมสุดท้าย : ${totals.fixLast}`;
+            if(moneyOutput) finalOutput += `\n\n${moneyOutput}`;
+            
+            document.getElementById('result').innerText = finalOutput.trim();
         }
+        
         document.getElementById('result').style.borderColor = "#818cf8";
     }
 
